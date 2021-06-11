@@ -23,6 +23,7 @@
     "passport-github": "^1.1.0",
     "passport-google-oauth20": "^2.0.0",
     "passport-local": "^1.0.0",
+    "passport-twitter": "^1.0.4",
     "passport-twitter-oauth2": "^2.1.1"
   },
   "devDependencies": {
