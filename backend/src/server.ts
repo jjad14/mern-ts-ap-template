@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import cors from 'cors';
 import session from 'express-session';
 import passport from 'passport';
+
 import User from './User';
 import { IMongoDBUser } from './types';
 
@@ -54,16 +55,8 @@ app.use(
 app.use(passport.initialize());
 app.use(passport.session());
 
-/*
-  In a typical web application, the credentials used to authenticate a user will only be transmitted during the login request. If authentication succeeds, a session will be established and maintained via a cookie set in the user's browser.
-
-  Each subsequent request will not contain credentials, but rather the unique cookie that identifies the session. In order to support login sessions, Passport will serialize and deserialize user instances to and from the session.
-
-  Serialize and deserialize are complex topics, where we are literally creating a serialization of information in a session.
-
-  Serialize user is taking the entire user object we get from the authentication method, and storing it into a session (via cookie).
-*/
 passport.serializeUser((user: IMongoDBUser, done: any) => {
+  // we only want to serialize the ID, this is safe practice
   return done(null, user._id);
 });
 
@@ -79,6 +72,10 @@ passport.deserializeUser((id: string, done: any) => {
   });
 });
 
+// We can grab more info from the user when he uses the google auth method with the scope parameter
+// Google Auth
+// Create a User in MongoDb
+// Serialize and Deserialize -> Grab the user from the database and return them
 passport.use(
   new GoogleStrategy(
     {
@@ -87,38 +84,134 @@ passport.use(
       callbackURL: '/auth/google/callback',
     },
     // called on a successful authentication
-    function (accessToken: any, refreshToken: any, profile: any, cb: any) {
-      // insert into database
-      // User.findOrCreate({ googleId: profile.id }, function (err, user) {
-      //   return cb(err, user);
-      // });
+    function (_: any, __: any, profile: any, cb: any) {
+      User.findOne(
+        { googleId: profile.id },
+        async (err: Error, doc: IMongoDBUser) => {
+          if (err) {
+            return cb(err, null);
+          }
 
-      /* 
-    Whenever you use the callback in passport, in this case its "cb()", it tells passport to move on and go to the next step. We pass this callback some params for the next step as well
-    */
-      console.log(profile);
-      cb(null, profile);
+          if (!doc) {
+            const newUser = new User({
+              googleId: profile.id,
+              username: profile.name.givenName,
+            });
+
+            await newUser.save();
+            // we want to pass our user from the db to the cb function, we only really need to pass the ID but this is okay for demo
+            cb(null, newUser);
+          }
+          // doc exists
+          cb(null, doc);
+        }
+      );
     }
   )
 );
 
-// { scope: ['profile'] } is to specify how much data to give to the person to give to the backend
-// profile == basic profile info
-/*
-  The sessionID is stored into a cookie, so if we make requests to the backend with our client, they can see our session ID, and get our information, from the session and run the deserialize user function
-*/
+// Twitter Auth
+passport.use(
+  new TwitterStrategy(
+    {
+      consumerKey: `${process.env.TWITTER_CLIENT_ID}`,
+      consumerSecret: `${process.env.TWITTER_CLIENT_SECRET}`,
+      callbackURL: '/auth/twitter/callback',
+    },
+    function (_: any, __: any, profile: any, cb: any) {
+      User.findOne(
+        { twitterId: profile.id },
+        async (err: Error, doc: IMongoDBUser) => {
+          if (err) {
+            return cb(err, null);
+          }
+
+          if (!doc) {
+            const newUser = new User({
+              twitterId: profile.id,
+              username: profile.username,
+            });
+
+            await newUser.save();
+            cb(null, newUser);
+          }
+          // doc exists
+          cb(null, doc);
+        }
+      );
+    }
+  )
+);
+
+// Github Auth
+passport.use(
+  new GitHubStrategy(
+    {
+      clientID: `${process.env.GITHUB_CLIENT_ID}`,
+      clientSecret: `${process.env.GITHUB_CLIENT_SECRET}`,
+      callbackURL: '/auth/github/callback',
+    },
+    function (_: any, __: any, profile: any, cb: any) {
+      User.findOne(
+        { githubId: profile.id },
+        async (err: Error, doc: IMongoDBUser) => {
+          if (err) {
+            return cb(err, null);
+          }
+
+          if (!doc) {
+            const newUser = new User({
+              githubId: profile.id,
+              username: profile.username,
+            });
+
+            await newUser.save();
+            cb(null, newUser);
+          }
+          // doc exists
+          cb(null, doc);
+        }
+      );
+    }
+  )
+);
+
+// Google Routes
 app.get(
   '/auth/google',
   passport.authenticate('google', { scope: ['profile'] })
 );
 
-// whether authentication succeded or failed determines the redirect
 app.get(
   '/auth/google/callback',
   passport.authenticate('google', { failureRedirect: '/login' }),
   function (req, res) {
     // Successful authentication, redirect home.
-    res.redirect('/');
+    res.redirect('http://localhost:3000');
+  }
+);
+
+// Twitter Routes
+app.get('/auth/twitter', passport.authenticate('twitter'));
+
+app.get(
+  '/auth/twitter/callback',
+  passport.authenticate('twitter', { failureRedirect: '/login' }),
+  function (req, res) {
+    // Successful authentication, redirect home.
+    res.redirect('http://localhost:3000');
+  }
+);
+
+// Github Routes
+app.get('/auth/github', passport.authenticate('github'));
+
+app.get(
+  '/auth/github/callback',
+  passport.authenticate('github', { failureRedirect: '/login' }),
+  function (req, res) {
+    // Successful authentication, redirect home.
+    res.redirect('http://localhost:3000');
   }
 );
 

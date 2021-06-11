@@ -1,14 +1,22 @@
 import React from 'react';
 import googleImage from '../../assets/googleImage.png';
+import githubImage from '../../assets/githubImage.png';
+import twitterImage from '../../assets/twitterImage.png';
 import styles from './LoginPage.module.css';
 
 const LoginPage = () => {
 
-    /*
-        The sessionID is stored into a cookie, so if we make requests to the backend with our client, they can see our session ID, and get our information, from the session and run the deserialize user function
-    */
     const googleLogin = () => {
         window.open("http://localhost:4000/auth/google", "_self");
+    };
+
+    const githubLogin = () => {
+        window.open("http://localhost:4000/auth/github", "_self");
+    };
+
+    const twitterLogin = () => {
+        // window.open("http://localhost:4000/auth/twitter", "_self");   
+        window.location.href = "http://localhost:4000/auth/twitter";
     };
 
     return (
@@ -20,6 +28,19 @@ const LoginPage = () => {
                     onClick={googleLogin}>
                     <img src={googleImage} alt="Google Icon" />
                     <p>Login With Google</p>
+                </div>
+                <div 
+                    className={`${styles.googleContainer} ${styles.githubContainer}`} 
+                    onClick={githubLogin}>
+                    <img src={githubImage} alt="Github Icon" />
+                    <p>Login With Github</p>
+                </div>
+
+                <div 
+                    className={`${styles.googleContainer} ${styles.twitterContainer}`} 
+                    onClick={twitterLogin}>
+                    <img src={twitterImage} alt="Twitter Icon" />
+                    <p>Login With Twitter</p>
                 </div>
 
             </div>
